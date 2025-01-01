@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net.Sockets;
 using System.Text;
+using CrossChessServer.MessageClasses;
 
 namespace CrossChessServer
 {
@@ -42,13 +43,14 @@ namespace CrossChessServer
         /// 发送字符串消息给客户端
         /// </summary>
         /// <param name="message">字符串消息</param>
-        public void Send(string message)
+        private void Send(BaseMessage message)
         {
             if (socket != null)
             {
                 try
                 {
-                    socket.Send(Encoding.UTF8.GetBytes(message));
+                    socket.Send(message.ConvertToByteArray());
+                    Console.WriteLine("发送消息给客户端，消息ID: " + message.GetMessageID());
                 }
                 catch (Exception e)
                 {
@@ -70,24 +72,38 @@ namespace CrossChessServer
                 {
                     byte[] buffer = new byte[1024 * 10];
                     int receiveNum = socket.Receive(buffer, 0);
-
-                    string message = Encoding.UTF8.GetString(buffer, 0, receiveNum);
-                    ThreadPool.QueueUserWorkItem(HandleMessage, message);
+                    if(receiveNum > 0)
+                    {
+                        // 传给消息处理线程去解析消息
+                        ThreadPool.QueueUserWorkItem(HandleMessage, buffer);
+                    }
                 }
             }
             catch (Exception e)
             {
-                Console.WriteLine("接受消息出错: " + e.Message);
+                Console.WriteLine("接收消息出错: " + e.Message);
                 this.Close();
             }
         }
 
         private void HandleMessage(object obj)
         {
-            string msg = (string)obj;
-            if (msg != null)
+            byte[] buffer = (byte[])obj;
+            int messageID = BitConverter.ToInt32(buffer, 0);
+            Console.WriteLine("处理客户端消息，消息ID: {0}", (MessageID)messageID);
+            switch (messageID)
             {
-                Console.WriteLine("客户端发来消息: " +  msg);
+                case (int)MessageID.RoundInfo:
+                    Round round = new Round();
+                    round.ReadFromBytes(buffer, sizeof(int)); // 跳过消息ID
+                    RoundManager.SaveRoundInfo(round); // 保存战局信息到txt
+                    break;
+                case (int)MessageID.RequestRoundList:
+                    Round[] rounds = RoundManager.GetRoundList(); // 收到客户端请求后从txt中读取战局信息
+                    this.Send(new ProvideRoundList(rounds)); // 把战局信息发送给客户端
+                    break;
+                default:
+                    break;
             }
         }
     }

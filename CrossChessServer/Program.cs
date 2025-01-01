@@ -1,4 +1,5 @@
 ﻿using System.Net.Sockets;
+using CrossChessServer.MessageClasses;
 
 namespace CrossChessServer
 {

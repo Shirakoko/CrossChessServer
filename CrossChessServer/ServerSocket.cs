@@ -55,9 +55,11 @@ namespace CrossChessServer
             }
 
             clientDict.Clear();
-            socket.Shutdown(SocketShutdown.Both);
-            socket.Close();
-            socket = null;
+            if (socket != null)
+            {
+                socket.Close();
+                socket = null;
+            }
         }
 
         #region "线程方法"
