@@ -1,6 +1,5 @@
 ﻿using System.Net;
 using System.Net.Sockets;
-
 namespace CrossChessServer
 {
     internal class ServerSocket

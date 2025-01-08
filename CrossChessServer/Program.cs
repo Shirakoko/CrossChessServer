@@ -5,6 +5,13 @@ namespace CrossChessServer
 {
     internal class Program
     {
+        // 默认服务器IP地址
+        const string DEFAULT_SERVER_IP = "192.168.1.5";
+        // 默认服务器端口号
+        const int DEFAULT_SERVER_PORT = 8080;
+        // 默认最多连入客户端个数
+        const int DEFAULT_MAX_NUM = 10;
+
         static void Main(string[] args)
         {
             Console.WriteLine("Hello, World!");
@@ -17,9 +24,9 @@ namespace CrossChessServer
                 switch (inputArgs[0])
                 {
                     case "Start":
-                        string ip = "127.0.0.1";
-                        int port = 8080;
-                        int maxNum = 10;
+                        string ip = DEFAULT_SERVER_IP;
+                        int port = DEFAULT_SERVER_PORT;
+                        int maxNum = DEFAULT_MAX_NUM;
 
                         for (int i = 1; i < inputArgs.Length; i++)
                         {
