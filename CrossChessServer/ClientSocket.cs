@@ -102,6 +102,12 @@ namespace CrossChessServer
                     Round[] rounds = RoundManager.GetRoundList(); // 收到客户端请求后从txt中读取战局信息
                     this.Send(new ProvideRoundList(rounds)); // 把战局信息发送给客户端
                     break;
+                case (int)MessageID.EnterHall:
+                    EnterHall enterHall = new EnterHall();
+                    enterHall.ReadFromBytes(buffer, sizeof(int));
+                    ServerSocket.Instance.AddToHallClientDict(this.clientID, enterHall.userName); // 把进入大厅的客户端信息保存到大厅列表
+                    this.Send(new AllowEnterHall()); // 给客户端发送准许进入大厅的消息
+                    break;
                 default:
                     break;
             }

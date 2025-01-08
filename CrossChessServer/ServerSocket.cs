@@ -7,6 +7,20 @@ namespace CrossChessServer
         // clientDict锁定机制，避免遍历时被修改
         private readonly object _lock = new object();
 
+        private static readonly ServerSocket instance = new ServerSocket();
+
+        // 私有构造函数，防止外部实例化
+        private ServerSocket() { }
+
+        // 公共静态方法，提供全局访问点
+        public static ServerSocket Instance
+        {
+            get
+            {
+                return instance;
+            }
+        }
+
         /// <summary>
         /// 服务端启动Socket
         /// </summary>
@@ -16,6 +30,11 @@ namespace CrossChessServer
         /// 用字典管理连入的所有客户端Socket
         /// </summary>
         public Dictionary<int, ClientSocket> clientDict = new Dictionary<int, ClientSocket>();
+
+        /// <summary>
+        /// 用字典管理大厅里的用户
+        /// </summary>
+        public Dictionary<int, string> hallClientDict = new Dictionary<int, string>();
 
         /// <summary>
         /// 服务器是否开启
@@ -58,6 +77,31 @@ namespace CrossChessServer
             {
                 socket.Close();
                 socket = null;
+            }
+        }
+
+        /// <summary>
+        /// 在大厅用户字典中加入用户
+        /// </summary>
+        /// <param name="clientID">客户端ID</param>
+        /// <param name="name">用户名</param>
+        public void AddToHallClientDict(int clientID, string name)
+        {
+            lock (_lock)
+            {
+                hallClientDict.Add(clientID, name);
+            }
+        }
+
+        /// <summary>
+        /// 从大厅用户字典中移除用户
+        /// </summary>
+        /// <param name="clientID">客户端ID</param>
+        public void RemoveFromHallClientDict(int clientID)
+        {
+            lock (_lock)
+            {
+                hallClientDict.Remove(clientID);
             }
         }
 

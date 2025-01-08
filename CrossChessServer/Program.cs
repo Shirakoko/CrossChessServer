@@ -15,7 +15,6 @@ namespace CrossChessServer
         static void Main(string[] args)
         {
             Console.WriteLine("Hello, World!");
-            ServerSocket serverSocket = new ServerSocket();
 
             while (true)
             {
@@ -56,11 +55,11 @@ namespace CrossChessServer
                             }
                         }
 
-                        serverSocket.StartServer(ip, port, maxNum);
+                        ServerSocket.Instance.StartServer(ip, port, maxNum);
                         Console.WriteLine("服务器开启成功，IP地址: {0}，端口：{1}", ip, port);
                         break;
                     case "Quit":
-                        serverSocket.CloseServer();
+                        ServerSocket.Instance.CloseServer();
                         Console.WriteLine("服务器关闭");
                         break;
                     default:
