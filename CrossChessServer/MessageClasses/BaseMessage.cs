@@ -19,6 +19,9 @@ public enum MessageID
     // 准许进入大厅
     AllowEnterHall = 11,
 
+    // 大厅用户数据
+    HallClients = 12,
+
     // 退出大厅
     QuitHall = 2,
 
