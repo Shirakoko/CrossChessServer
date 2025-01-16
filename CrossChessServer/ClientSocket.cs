@@ -45,7 +45,7 @@ namespace CrossChessServer
         /// <param name="message">字符串消息</param>
         private void Send(BaseMessage message)
         {
-            if (socket != null)
+            if (isConnected)
             {
                 try
                 {
@@ -61,7 +61,7 @@ namespace CrossChessServer
 
         public void Receive()
         {
-            if (socket == null)
+            if (!isConnected)
             {
                 return;
             }
@@ -70,7 +70,7 @@ namespace CrossChessServer
             {
                 if(socket.Available > 0)
                 {
-                    byte[] buffer = new byte[1024 * 10];
+                    byte[] buffer = new byte[1024 * 1024];
                     int receiveNum = socket.Receive(buffer, 0);
                     if(receiveNum > 0)
                     {
@@ -109,6 +109,11 @@ namespace CrossChessServer
                     ServerSocket.Instance.AddToHallClientDict(this.clientID, enterHall.userName); // 把进入大厅的客户端信息保存到大厅列表
                     this.Send(new AllowEnterHall()); // 给客户端发送准许进入大厅的消息
                     this.Send(new HallClients(ServerSocket.Instance.hallClientDict)); // 向客户端发送大厅用户数据
+                    break;
+                case (int)MessageID.ClientQuit:
+                    Console.WriteLine("客户端{0}发来断开连接", this.clientID);
+                    ServerSocket.Instance.RemoveClient(this.clientID);
+                    this.Close();
                     break;
                 default:
                     break;

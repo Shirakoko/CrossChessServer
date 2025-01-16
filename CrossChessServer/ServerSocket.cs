@@ -5,7 +5,9 @@ namespace CrossChessServer
     internal class ServerSocket
     {
         // clientDict锁定机制，避免遍历时被修改
-        private readonly object _lock = new object();
+        private readonly object _clientDictLock = new object();
+        // hallClientDict锁定机制，避免遍历时被修改
+        private readonly object _hallClientDictLock = new object();
 
         private static readonly ServerSocket instance = new ServerSocket();
 
@@ -87,7 +89,7 @@ namespace CrossChessServer
         /// <param name="name">用户名</param>
         public void AddToHallClientDict(int clientID, string name)
         {
-            lock (_lock)
+            lock (_hallClientDictLock)
             {
                 hallClientDict.Add(clientID, name);
             }
@@ -99,9 +101,28 @@ namespace CrossChessServer
         /// <param name="clientID">客户端ID</param>
         public void RemoveFromHallClientDict(int clientID)
         {
-            lock (_lock)
+            lock (_hallClientDictLock)
             {
-                hallClientDict.Remove(clientID);
+                if (hallClientDict.ContainsKey(clientID))
+                {
+                    hallClientDict.Remove(clientID);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 移除客户端
+        /// </summary>
+        /// <param name="clientID">客户端ID</param>
+        public void RemoveClient(int clientID)
+        {
+            lock (_clientDictLock)
+            {
+                if (clientDict.ContainsKey(clientID))
+                {
+                    clientDict.Remove(clientID);
+                    Console.WriteLine("客户端{0}从字典中移除", clientID);
+                }
             }
         }
 
@@ -116,7 +137,7 @@ namespace CrossChessServer
                     // 获取客户端的IP地址和端口号
                     IPEndPoint clientEndPoint = (IPEndPoint)clientSocket.RemoteEndPoint;
                     ClientSocket client = new ClientSocket(clientSocket);
-                    lock (_lock)
+                    lock (_clientDictLock)
                     {
                         clientDict.Add(client.clientID, client);
                     }
@@ -134,7 +155,7 @@ namespace CrossChessServer
         {
             while(isStarted)
             {
-                lock (_lock)
+                lock (_clientDictLock)
                 {
                     if (clientDict.Count > 0)
                     {
