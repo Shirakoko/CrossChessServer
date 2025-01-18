@@ -93,7 +93,10 @@ namespace CrossChessServer
         {
             lock (_hallClientDictLock)
             {
-                hallClientDict.Add(clientID, name);
+                if(hallClientDict.ContainsKey(clientID) == false)
+                {
+                    hallClientDict.Add(clientID, name);
+                }
             }
         }
 
