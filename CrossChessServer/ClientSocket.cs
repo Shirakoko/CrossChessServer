@@ -14,12 +14,52 @@ namespace CrossChessServer
 
         public Socket socket;
 
+        // 心跳消息时间
+        private DateTime lastHeartbeatTime = DateTime.MinValue;
+        // 心跳消息超时时间（秒）
+        private static int TIME_OUT = 20;
+
         public ClientSocket(Socket socket)
         {
             this.socket = socket;
             this.clientID = CLIENT_INDEX;
             CLIENT_INDEX++;
         }
+
+        #region "心跳消息"
+        /// <summary>
+        /// 开启心跳消息检测的线程
+        /// </summary>
+        public void StartCheckTimeOut()
+        {
+            ThreadPool.QueueUserWorkItem(CheckHeartMessage);
+        }
+
+        // 线程方法，每0.1s检测一次心跳消息超时
+        private void CheckHeartMessage(object obj)
+        {
+            while(isConnected)
+            {
+                CheckHeartMessageTimeOut();
+                Thread.Sleep(100);
+            }
+        }
+        
+        private void CheckHeartMessageTimeOut()
+        {
+            if (lastHeartbeatTime == DateTime.MinValue || !isConnected)
+            {
+                return;
+            }
+            TimeSpan timeSpan = DateTime.UtcNow - lastHeartbeatTime;
+            if (timeSpan.TotalSeconds > TIME_OUT)
+            {
+                Console.WriteLine("客户端{0}心跳超时，即将断开连接", this.clientID);
+                ServerSocket.Instance.RemoveClient(this.clientID);
+                this.Close();
+            }
+        }
+        #endregion
 
         /// <summary>
         /// 客户端Socket是否连接
@@ -90,16 +130,18 @@ namespace CrossChessServer
         {
             byte[] buffer = (byte[])obj;
             int messageID = BitConverter.ToInt32(buffer, 0);
-            Console.WriteLine("处理客户端消息，消息ID: {0}", (MessageID)messageID);
+            //Console.WriteLine("处理客户端消息，消息ID: {0}", (MessageID)messageID);
             switch (messageID)
             {
                 case (int)MessageID.RoundInfo:
                     Round round = new Round();
                     round.ReadFromBytes(buffer, sizeof(int)); // 跳过消息ID
+                    Console.WriteLine("客户端{0}保存战局", this.clientID);
                     RoundManager.SaveRoundInfo(round); // 保存战局信息到txt
                     break;
                 case (int)MessageID.RequestRoundList:
                     Round[] rounds = RoundManager.GetRoundList(); // 收到客户端请求后从txt中读取战局信息
+                    Console.WriteLine("客户端{0}请求战局信息", this.clientID);
                     this.Send(new ProvideRoundList(rounds)); // 把战局信息发送给客户端
                     break;
                 case (int)MessageID.EnterHall:
@@ -114,6 +156,10 @@ namespace CrossChessServer
                     Console.WriteLine("客户端{0}发来断开连接", this.clientID);
                     ServerSocket.Instance.RemoveClient(this.clientID);
                     this.Close();
+                    break;
+                case (int)MessageID.HeartMessage:
+                    lastHeartbeatTime = DateTime.UtcNow;
+                    Console.WriteLine($"Heartbeat received. lastHeartbeatTime updated to: {lastHeartbeatTime}");
                     break;
                 default:
                     break;

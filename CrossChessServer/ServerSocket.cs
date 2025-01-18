@@ -73,8 +73,10 @@ namespace CrossChessServer
             {
                 client.Close();
             }
-
-            clientDict.Clear();
+            lock (_clientDictLock)
+            {
+                clientDict.Clear();
+            }
             if (socket != null)
             {
                 socket.Close();
@@ -137,6 +139,8 @@ namespace CrossChessServer
                     // 获取客户端的IP地址和端口号
                     IPEndPoint clientEndPoint = (IPEndPoint)clientSocket.RemoteEndPoint;
                     ClientSocket client = new ClientSocket(clientSocket);
+                    // 客户端Socket开启检测心跳消息是否超时的线程
+                    client.StartCheckTimeOut();
                     lock (_clientDictLock)
                     {
                         clientDict.Add(client.clientID, client);
@@ -155,14 +159,11 @@ namespace CrossChessServer
         {
             while(isStarted)
             {
-                lock (_clientDictLock)
+                if (clientDict.Count > 0)
                 {
-                    if (clientDict.Count > 0)
+                    foreach (ClientSocket client in clientDict.Values)
                     {
-                        foreach (ClientSocket client in clientDict.Values)
-                        {
-                            client.Receive();
-                        }
+                        client.Receive();
                     }
                 }
             }
