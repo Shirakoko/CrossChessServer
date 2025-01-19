@@ -104,6 +104,7 @@ namespace CrossChessServer
                 foreach (int clinetID in hallClientDict.Keys)
                 {
                     clientDict[clinetID].SendHallClients();
+                    Console.WriteLine("通知客户端{0}大厅用户数据变化", clinetID);
                 }
             }
         }
