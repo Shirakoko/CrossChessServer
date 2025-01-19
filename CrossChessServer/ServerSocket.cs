@@ -98,6 +98,14 @@ namespace CrossChessServer
                     hallClientDict.Add(clientID, name);
                 }
             }
+            // 通知所有客户端大厅用户数据变化
+            lock (_hallClientDictLock)
+            {
+                foreach (int clinetID in hallClientDict.Keys)
+                {
+                    clientDict[clinetID].SendHallClients();
+                }
+            }
         }
 
         /// <summary>
@@ -111,6 +119,14 @@ namespace CrossChessServer
                 if (hallClientDict.ContainsKey(clientID))
                 {
                     hallClientDict.Remove(clientID);
+                }
+            }
+            // 通知所有客户端大厅用户数据变化
+            lock (_hallClientDictLock)
+            {
+                foreach(int clinetID in hallClientDict.Keys)
+                {
+                    clientDict[clinetID].SendHallClients();
                 }
             }
         }
@@ -127,6 +143,15 @@ namespace CrossChessServer
                 {
                     clientDict.Remove(clientID);
                     Console.WriteLine("客户端{0}从字典中移除", clientID);
+                }
+            }
+
+            lock (_hallClientDictLock)
+            {
+                if (hallClientDict.ContainsKey(clientID))
+                {
+                    hallClientDict.Remove(clientID);
+                    Console.WriteLine("客户端{0}从大厅用户字典中移除", clientID);
                 }
             }
         }
@@ -164,9 +189,12 @@ namespace CrossChessServer
             {
                 if (clientDict.Count > 0)
                 {
-                    foreach (ClientSocket client in clientDict.Values)
+                    lock (_clientDictLock)
                     {
-                        client.Receive();
+                        foreach (ClientSocket client in clientDict.Values)
+                        {
+                            client.Receive();
+                        }
                     }
                 }
             }

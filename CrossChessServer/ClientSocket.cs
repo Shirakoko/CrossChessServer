@@ -17,7 +17,7 @@ namespace CrossChessServer
         // 心跳消息时间
         private DateTime lastHeartbeatTime = DateTime.MinValue;
         // 心跳消息超时时间（秒）
-        private static int TIME_OUT = 20;
+        private static int TIME_OUT = 60;
 
         public ClientSocket(Socket socket)
         {
@@ -90,7 +90,7 @@ namespace CrossChessServer
                 try
                 {
                     socket.Send(message.ConvertToByteArray());
-                    Console.WriteLine("发送消息给客户端，消息ID: " + message.GetMessageID());
+                    //Console.WriteLine("发送消息给客户端，消息ID: " + message.GetMessageID());
                 }
                 catch (Exception e)
                 {
@@ -126,6 +126,11 @@ namespace CrossChessServer
             }
         }
 
+        public void SendHallClients()
+        {
+            this.Send(new HallClients(ServerSocket.Instance.hallClientDict));
+        }
+
         private void HandleMessage(object obj)
         {
             byte[] buffer = (byte[])obj;
@@ -148,9 +153,9 @@ namespace CrossChessServer
                     EnterHall enterHall = new EnterHall();
                     enterHall.ReadFromBytes(buffer, sizeof(int));
                     Console.WriteLine("客户端{0}进入大厅，用户名: {1}", this.clientID, enterHall.userName);
-                    ServerSocket.Instance.AddToHallClientDict(this.clientID, enterHall.userName); // 把进入大厅的客户端信息保存到大厅列表
                     this.Send(new AllowEnterHall(this.clientID)); // 给客户端发送准许进入大厅的消息
-                    this.Send(new HallClients(ServerSocket.Instance.hallClientDict)); // 向客户端发送大厅用户数据
+                    ServerSocket.Instance.AddToHallClientDict(this.clientID, enterHall.userName); // 把进入大厅的客户端信息保存到大厅列表
+                    // this.Send(new HallClients(ServerSocket.Instance.hallClientDict)); // 向客户端发送大厅用户数据
                     break;
                 case (int)MessageID.ClientQuit:
                     Console.WriteLine("客户端{0}发来断开连接", this.clientID);
@@ -161,6 +166,11 @@ namespace CrossChessServer
                     Console.WriteLine("客户端{0}退出大厅", this.clientID);
                     ServerSocket.Instance.RemoveFromHallClientDict(this.clientID);
                     break;
+                case (int)MessageID.SendBattleRequest:
+                    SendBattleRequest sendBattleRequest = new SendBattleRequest();
+                    sendBattleRequest.ReadFromBytes(buffer, sizeof(int));
+                    Console.WriteLine("客户端{0}向客户端{1}发送对战请求", this.clientID, sendBattleRequest.riverClientID);
+                       break;
                 case (int)MessageID.HeartMessage:
                     lastHeartbeatTime = DateTime.UtcNow;
                     Console.WriteLine($"Heartbeat received. lastHeartbeatTime updated to: {lastHeartbeatTime}");
