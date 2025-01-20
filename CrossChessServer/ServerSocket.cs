@@ -2,6 +2,21 @@
 using System.Net.Sockets;
 namespace CrossChessServer
 {
+    /// <summary>
+    /// 用户信息结构体
+    /// </summary>
+    public struct UserInfo
+    {
+        public string Name; // 用户名
+        public bool IsIdle; // 用户是否空闲
+
+        public UserInfo(string name, bool isIdle)
+        {
+            Name = name;
+            IsIdle = isIdle;
+        }
+    }
+
     internal class ServerSocket
     {
         // clientDict锁定机制，避免遍历时被修改
@@ -36,7 +51,7 @@ namespace CrossChessServer
         /// <summary>
         /// 用字典管理大厅里的用户
         /// </summary>
-        public Dictionary<int, string> hallClientDict = new Dictionary<int, string>();
+        public Dictionary<int, UserInfo> hallClientDict = new Dictionary<int, UserInfo>();
 
         /// <summary>
         /// 服务器是否开启
@@ -93,19 +108,19 @@ namespace CrossChessServer
         {
             lock (_hallClientDictLock)
             {
-                if(hallClientDict.ContainsKey(clientID) == false)
+                if (hallClientDict.ContainsKey(clientID) == false)
                 {
-                    hallClientDict.Add(clientID, name);
+                    // 默认用户是空闲的
+                    UserInfo userInfo = new UserInfo(name, true);
+                    hallClientDict.Add(clientID, userInfo);
                 }
             }
+
             // 通知所有客户端大厅用户数据变化
-            lock (_hallClientDictLock)
+            foreach (int clinetID in hallClientDict.Keys)
             {
-                foreach (int clinetID in hallClientDict.Keys)
-                {
-                    clientDict[clinetID].SendHallClients();
-                    Console.WriteLine("通知客户端{0}大厅用户数据变化", clinetID);
-                }
+                clientDict[clinetID].SendHallClients();
+                Console.WriteLine("通知客户端{0}大厅用户数据变化", clinetID);
             }
         }
 
@@ -115,20 +130,40 @@ namespace CrossChessServer
         /// <param name="clientID">客户端ID</param>
         public void RemoveFromHallClientDict(int clientID)
         {
-            lock (_hallClientDictLock)
+            if (hallClientDict.ContainsKey(clientID))
             {
-                if (hallClientDict.ContainsKey(clientID))
-                {
-                    hallClientDict.Remove(clientID);
-                }
+                hallClientDict.Remove(clientID);
             }
             // 通知所有客户端大厅用户数据变化
-            lock (_hallClientDictLock)
+            foreach (int clinetID in hallClientDict.Keys)
             {
-                foreach(int clinetID in hallClientDict.Keys)
-                {
-                    clientDict[clinetID].SendHallClients();
-                }
+                clientDict[clinetID].SendHallClients();
+                Console.WriteLine("通知客户端{0}大厅用户数据变化", clinetID);
+            }
+        }
+
+        /// <summary>
+        /// 设置某个大厅用户的闲忙状态
+        /// </summary>
+        /// <param name="clientID">用户ID</param>
+        /// <param name="isIdle">是否空闲</param>
+        public void SetHallClientIdle(int clientID, bool isIdle)
+        {
+            if (hallClientDict.ContainsKey(clientID))
+            {
+                // 获取当前用户信息
+                UserInfo userInfo = hallClientDict[clientID];
+                // 更新用户状态
+                userInfo.IsIdle = isIdle;
+                // 将更新后的用户信息重新存入字典
+                hallClientDict[clientID] = userInfo;
+            }
+
+            // 通知所有客户端大厅用户数据变化
+            foreach (int clinetID in hallClientDict.Keys)
+            {
+                clientDict[clinetID].SendHallClients();
+                Console.WriteLine("通知客户端{0}大厅用户数据变化", clinetID);
             }
         }
 
@@ -153,6 +188,13 @@ namespace CrossChessServer
                 {
                     hallClientDict.Remove(clientID);
                     Console.WriteLine("客户端{0}从大厅用户字典中移除", clientID);
+
+                    // 通知所有客户端大厅用户数据变化
+                    foreach (int clinetID in hallClientDict.Keys)
+                    {
+                        clientDict[clinetID].SendHallClients();
+                        Console.WriteLine("通知客户端{0}大厅用户数据变化", clinetID);
+                    }
                 }
             }
         }

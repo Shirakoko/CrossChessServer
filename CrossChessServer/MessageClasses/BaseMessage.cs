@@ -22,6 +22,9 @@ public enum MessageID
     // 大厅用户数据
     HallClients = 12,
 
+    // TODO 请求大厅用户数据
+    RequestHallClients = 13,
+
     // 退出大厅
     QuitHall = 2,
 
@@ -108,6 +111,15 @@ public abstract class BaseMessage
         }
     }
 
+    protected void WriteBoolList(byte[] bytes, bool[] values, ref int index)
+    {
+        WriteInt(bytes, values.Length, ref index);
+        for(int i = 0;i < values.Length; i++)
+        {
+            WriteBool(bytes, values[i], ref index);
+        }
+    }
+
     protected void WriteData(byte[] bytes, BaseMessage data, ref int index)
     {
         byte[] dataBytes = data.ConvertToByteArray();
@@ -143,6 +155,18 @@ public abstract class BaseMessage
         {
             result[i] = ReadInt(bytes, ref index);
         }
+        return result;
+    }
+
+    protected bool[] ReadBoolList(byte[] bytes, ref int index)
+    {
+        int length = ReadInt(bytes, ref index);
+        bool[] result = new bool[length];
+        for(int i = 0;i < length; i++)
+        {
+            result[i] = ReadBool(bytes, ref index);
+        }
+
         return result;
     }
 
