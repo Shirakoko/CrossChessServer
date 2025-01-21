@@ -22,7 +22,7 @@ public enum MessageID
     // 大厅用户数据
     HallClients = 12,
 
-    // TODO 请求大厅用户数据
+    // 请求大厅用户数据
     RequestHallClients = 13,
 
     // 退出大厅
