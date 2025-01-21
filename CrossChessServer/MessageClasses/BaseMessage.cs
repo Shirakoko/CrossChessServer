@@ -31,6 +31,9 @@ public enum MessageID
     // 发送对战请求
     SendBattleRequest = 3,
 
+    // TODO 回复对战请求
+    ReplyBattleRequest = 4,
+
     // 客户端退出
     ClientQuit = 99,
 

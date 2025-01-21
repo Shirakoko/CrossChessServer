@@ -174,7 +174,7 @@ namespace CrossChessServer
                     Console.WriteLine("客户端{0}向客户端{1}发送对战请求", this.clientID, sendBattleRequest.riverClientID);
                     // 给被发送请求的客户端发送对战请求
                     ServerSocket.Instance.clientDict[sendBattleRequest.riverClientID].Send(
-                        new SendBattleRequest(sendBattleRequest.riverClientID, sendBattleRequest.senderClientName)); 
+                        new SendBattleRequest(this.clientID, sendBattleRequest.senderClientName)); 
                     // 把被发送请求的客户端设置成繁忙
                     ServerSocket.Instance.SetHallClientIdle(sendBattleRequest.riverClientID, false);
                        break;
