@@ -178,6 +178,21 @@ namespace CrossChessServer
                     // 把被发送请求的客户端设置成繁忙
                     ServerSocket.Instance.SetHallClientIdle(sendBattleRequest.riverClientID, false);
                        break;
+                case (int)MessageID.ReplyBattleRequest:
+                    ReplyBattleRequest replyBattleRequest = new ReplyBattleRequest();
+                    replyBattleRequest.ReadFromBytes(buffer, sizeof(int));
+                    int riverClientID = replyBattleRequest.riverClientID;
+                    bool accept = replyBattleRequest.accept;
+                    Console.WriteLine("客户端{0}回复客户端{1}的对战请求，是否接受: {2}", this.clientID, riverClientID, accept);
+                    if(!accept) {
+                        // TODO 如果是false，把客户端{0}设置成空闲，给客户端{1}发送"你被拒绝了"
+                        ServerSocket.Instance.SetHallClientIdle(this.clientID, true);
+                    } else {
+                        // TODO 如果是true，把双方设置成繁忙，通知双方进入对战
+                        ServerSocket.Instance.SetHallClientIdle(this.clientID, false);
+                        ServerSocket.Instance.SetHallClientIdle(riverClientID, false);
+                    }
+                   break;
                 case (int)MessageID.HeartMessage:
                     lastHeartbeatTime = DateTime.UtcNow;
                     Console.WriteLine($"Heartbeat received. lastHeartbeatTime updated to: {lastHeartbeatTime}");
