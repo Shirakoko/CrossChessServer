@@ -2,6 +2,7 @@
 using System.Net.Sockets;
 using System.Text;
 using CrossChessServer.MessageClasses;
+using static CrossChessServer.ServerSocket;
 
 namespace CrossChessServer
 {
@@ -188,11 +189,29 @@ namespace CrossChessServer
                         // TODO 如果是false，把客户端{0}设置成空闲，给客户端{1}发送"你被拒绝了"
                         ServerSocket.Instance.SetHallClientIdle(this.clientID, true);
                     } else {
-                        // TODO 如果是true，把双方设置成繁忙，通知双方进入对战
+                        // 如果是true，把双方设置成繁忙
                         ServerSocket.Instance.SetHallClientIdle(this.clientID, false);
                         ServerSocket.Instance.SetHallClientIdle(riverClientID, false);
+
+                        // 通知双方进入对战
+                        this.Send(new EnterRound(true, ONLINE_ROUND_INDEX)); // 被请求方是先手
+                        ServerSocket.Instance.clientDict[riverClientID].Send(new EnterRound(false, ONLINE_ROUND_INDEX)); // 请求方是后手
+
+                        // 创建战局
+                        ServerSocket.Instance.onlineRoundDict.Add(ONLINE_ROUND_INDEX, new OnlineRoundState(this.clientID, riverClientID));
+                        ONLINE_ROUND_INDEX++;
                     }
-                   break;
+                    break;
+                case (int)MessageID.MoveInfo:
+                    MoveInfo moveInfo = new MoveInfo();
+                    moveInfo.ReadFromBytes(buffer, sizeof(int));
+                    // 更新战局信息
+                    ServerSocket.Instance.UpdateOnlineRoundState(moveInfo.onlineRoundIndex, moveInfo.pos, this.clientID);
+                    // 从战局信息中获取对手的clientID
+                    int riverID = ServerSocket.Instance.GetRiverClient(moveInfo.onlineRoundIndex, this.clientID);
+                    // 给它的对手发送同样的落子信息
+                    ServerSocket.Instance.clientDict[riverID].Send(moveInfo);
+                    break;
                 case (int)MessageID.HeartMessage:
                     lastHeartbeatTime = DateTime.UtcNow;
                     Console.WriteLine($"Heartbeat received. lastHeartbeatTime updated to: {lastHeartbeatTime}");
