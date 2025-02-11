@@ -354,40 +354,56 @@
   }
   ```
   
-- **战局索引**
-  通过自增`ONLINE_ROUND_INDEX`确保全局唯一性 
+- **战局索引：**通过自增`ONLINE_ROUND_INDEX`确保全局唯一性。
+  
+  ```csharp
+  public static int ONLINE_ROUND_INDEX = 1001;
+  
+  public void CreateNewRound(int player1ID, int player2ID)
+  {
+      int roundID = ONLINE_ROUND_INDEX++;
+      OnlineRoundState newRound = new OnlineRoundState(player1ID, player2ID);
+      onlineRoundDict.Add(roundID, newRound);
+      Console.WriteLine("新战局创建，ID: {0}", roundID);
+  }
+  ```
+  
+- **线程锁：**多个线程可能会同时访问共享资源（如`clientDict`和`hallClientDict`），导致`foreach`报错；使用了线程锁（`lock`）来确保同一时间只有一个线程可以访问这些共享资源。
 
-### 客户端协议处理
+  ```csharp
+  private readonly object _clientDictLock = new object();
+  private readonly object _hallClientDictLock = new object();
+  
+  public void RemoveClient(int clientID)
+  {
+      lock (_clientDictLock)
+      {
+          if (clientDict.ContainsKey(clientID))
+          {
+              clientDict.Remove(clientID);
+              Console.WriteLine("客户端{0}从字典中移除", clientID);
+          }
+      }
+  
+      lock (_hallClientDictLock)
+      {
+          if (hallClientDict.ContainsKey(clientID))
+          {
+              hallClientDict.Remove(clientID);
+              Console.WriteLine("客户端{0}从大厅用户字典中移除", clientID);
+  
+              // 通知所有客户端大厅用户数据变化
+              foreach (int clinetID in hallClientDict.Keys)
+              {
+                  clientDict[clinetID].SendHallClients();
+              }
+          }
+      }
+  }
+  ```
 
-#### 消息响应机制
+## **异常处理**
 
-1. **连接阶段**
-   - **AllowEnterHall (11)**
-     → 存储clientID → 发送`RequestHallClients`向服务端请求大厅用户数据
-   - **HallClients (12)**
-     → 触发注册的回调函数 → 更新大厅UI列表
-2. **对战交互**
-   - **SendBattleRequest (3)**
-     → 显示弹窗询问用户是否接受对战 → 用户确认后发送`ReplyBattleRequest`
-   - **EnterRound (5)**
-     → 记录先手状态 → 加载对战场景 → 初始化棋盘
-   - **MoveInfo (18)**
-     → 调用`GameManager`更新棋盘 → 渲染棋子
-3. **数据获取**
-   - **ProvideRoundList (8)**
-     → 解析历史战局数据 → 显示回放列表
-
-#### 核心机制
-
-- **异步处理**
-  接收线程填充`receiveMsgQueue`，主线程`Update`处理消息队列
-- **心跳维持**
-  `InvokeRepeating`每4秒发送心跳，不等待响应
-- **状态保持**
-  `_onlineRoundIndex`贯穿整个对战过程，用于服务端战局匹配
-
-### 异常处理设计
-
-#### 客户端断线重连
+### **客户端断线重连**
 
 //TODO
