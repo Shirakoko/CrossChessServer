@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Net.Sockets;
+using CrossChessServer.MessageClasses;
 namespace CrossChessServer
 {
     /// <summary>
@@ -78,6 +79,11 @@ namespace CrossChessServer
         /// 用字典管理在线战局状态
         /// </summary>
         public Dictionary<int, OnlineRoundState> onlineRoundDict = new Dictionary<int, OnlineRoundState>();
+
+        /// <summary>
+        /// 用字典管理客户端发来的OnlineRoundResult，并转成Round
+        /// </summary>
+        public Dictionary<int, Round> onlineRoundResultDict = new Dictionary<int, Round>();
 
         /// <summary>
         /// 服务器是否开启

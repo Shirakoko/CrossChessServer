@@ -6,7 +6,7 @@ namespace CrossChessServer
     internal class Program
     {
         // 默认服务器IP地址
-        const string DEFAULT_SERVER_IP = "192.168.1.2";
+        const string DEFAULT_SERVER_IP = "192.168.1.3";
         // 默认服务器端口号
         const int DEFAULT_SERVER_PORT = 8080;
         // 默认最多连入客户端个数

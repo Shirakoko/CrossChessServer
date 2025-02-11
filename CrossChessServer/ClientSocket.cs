@@ -212,6 +212,73 @@ namespace CrossChessServer
                     // 给它的对手发送同样的落子信息
                     ServerSocket.Instance.clientDict[riverID].Send(moveInfo);
                     break;
+                case (int)MessageID.OnlineRoundResult:
+                    OnlineRoundResult onlineRoundResult = new OnlineRoundResult();
+                    onlineRoundResult.ReadFromBytes(buffer, sizeof(int));
+                    // 战局ID
+                    int roundIndex = onlineRoundResult.roundID;
+                    bool isPrevPlayer = onlineRoundResult.isPrevPlayer;
+                    string playerName = onlineRoundResult.playerName;
+                    int result = onlineRoundResult.result;
+                    int[] steps = onlineRoundResult.steps;
+                    Console.WriteLine("收到客户端{0}发来的联机对战结果，roundID为{1}", clientID, roundIndex);
+                    if(!ServerSocket.Instance.onlineRoundResultDict.ContainsKey(roundIndex))
+                    {
+                        Round newRound = new Round();
+                        newRound.roundID = roundIndex;
+                        if(isPrevPlayer) {
+                            newRound.player1 = playerName;
+                        } else
+                        {
+                            newRound.player2 = playerName;
+                        }
+                        newRound.result = result;
+
+                        // 深拷贝 steps 数组
+                        newRound.steps = new int[steps.Length];
+                        Array.Copy(steps, newRound.steps, steps.Length);
+
+                        // 第一个客户端发来的OnlineRoundResult存入字典
+                        ServerSocket.Instance.onlineRoundResultDict.Add(roundIndex, newRound);
+                    }
+                    else
+                    {
+                        // 第二个客户端发来的OnlineRoundResult用于校验
+                        // 从字典中取出第一个客户端发来的Round
+                        Round existRound = ServerSocket.Instance.onlineRoundResultDict[roundIndex];
+                        // 校验结果
+                        bool pass = true;
+                        // 校验 result，是否【一个为1一个为2】或【两个都为0】
+                        if (!((existRound.result == 1 && result == 2) ||
+                              (existRound.result == 2 && result == 1) ||
+                              (existRound.result == 0 && result == 0))) {
+                            pass = false;
+                        }
+
+                        // 校验 steps，是否【完全相同】
+                        if (!existRound.steps.SequenceEqual(steps)) {
+                            pass = false;
+                        }
+
+                        // 若校验通过
+                        if (pass) {
+                            // 补全剩下那个没有赋值过的 player（1或2）
+                            if (string.IsNullOrEmpty(existRound.player1))
+                            {
+                                existRound.player1 = playerName;
+                            }
+                            else if (string.IsNullOrEmpty(existRound.player2))
+                            {
+                                existRound.player2 = playerName;
+                            }
+
+                            // 保存 Round 到 txt 文件
+                            RoundManager.SaveRoundInfo(existRound);
+                        }
+                        RoundManager.SaveRoundInfo(existRound);
+
+                    }
+                    break;
                 case (int)MessageID.HeartMessage:
                     lastHeartbeatTime = DateTime.UtcNow;
                     Console.WriteLine($"Heartbeat received. lastHeartbeatTime updated to: {lastHeartbeatTime}");
