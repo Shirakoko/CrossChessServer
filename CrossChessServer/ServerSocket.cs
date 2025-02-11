@@ -25,7 +25,6 @@ namespace CrossChessServer
     {
         public int plater1ID; // 玩家1的ID
         public int plater2ID; // 玩家2的ID
-        public int lastPlayerID; // 刚才执行操作的玩家ID
         public int[] grids;
 
         public OnlineRoundState(int plater1ID, int plater2ID)
