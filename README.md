@@ -29,62 +29,270 @@
 
 ### 协议类型
 
-| 消息ID                 | 数值 | 方向            | 关键行为                                               |
-| :--------------------- | :--- | :-------------- | :----------------------------------------------------- |
-| **EnterHall**          | 1    | 客户端 → 服务端 | 携带用户名初始化连接，触发服务端分配clientID           |
-| **QuitHall**           | 2    | 客户端 → 服务端 | 清除用户在大厅的在线状态                               |
-| **SendBattleRequest**  | 3    | 客户端 ↔ 服务端 | 请求方发送目标clientID，服务端转发请求并标记目标为繁忙 |
-| **ReplyBattleRequest** | 4    | 客户端 → 服务端 | 包含接受/拒绝标志，触发战局创建或状态重置              |
-| **EnterRound**         | 5    | 服务端 → 客户端 | 携带先手标识(isPrevPlayer)和战局索引(onlineRoundIndex) |
-| **RoundInfo**          | 6    | 客户端 → 服务端 | 持久化保存到`RoundManager`管理的txt文件                |
-| **RequestRoundList**   | 7    | 客户端 → 服务端 | 触发服务端从文件加载历史数据                           |
-| **ProvideRoundList**   | 8    | 服务端 → 客户端 | 携带所有历史战局的Round对象数组                        |
-| **AllowEnterHall**     | 11   | 服务端 → 客户端 | 返回分配的clientID（数值型标识）                       |
-| **HallClients**        | 12   | 服务端 → 客户端 | 包含大厅用户字典（clientID-用户名映射）                |
-| **RequestHallClients** | 13   | 客户端 → 服务端 | 手动请求刷新大厅列表                                   |
-| **MoveInfo**           | 18   | 客户端 ↔ 服务端 | 包含棋子位置(pos)和战局索引(onlineRoundIndex)          |
-| **ClientQuit**         | 99   | 客户端 → 服务端 | 显式断开连接指令                                       |
-| **HeartMessage**       | 100  | 客户端 → 服务端 | 维持TCP连接活性                                        |
-| **RoundState**         | 9    | -               | // TODO                                                |
+| 消息ID                 | 数值 | 方向            | 关键行为                                                     |
+| :--------------------- | :--- | :-------------- | :----------------------------------------------------------- |
+| **EnterHall**          | 1    | 客户端 → 服务端 | 携带用户名初始化连接，触发服务端分配clientID                 |
+| **QuitHall**           | 2    | 客户端 → 服务端 | 清除用户在大厅的在线状态                                     |
+| **SendBattleRequest**  | 3    | 客户端 ↔ 服务端 | 请求方发送目标clientID，服务端转发请求并标记目标为繁忙       |
+| **ReplyBattleRequest** | 4    | 客户端 → 服务端 | 包含接受/拒绝标志，触发战局创建或状态重置                    |
+| **EnterRound**         | 5    | 服务端 → 客户端 | 携带先手标识(isPrevPlayer)和战局索引(onlineRoundIndex)       |
+| **RoundInfo**          | 6    | 客户端 → 服务端 | 持久化保存到`RoundManager`管理的txt文件                      |
+| **RequestRoundList**   | 7    | 客户端 → 服务端 | 触发服务端从文件加载历史数据                                 |
+| **ProvideRoundList**   | 8    | 服务端 → 客户端 | 携带所有历史战局的Round对象数组                              |
+| **AllowEnterHall**     | 11   | 服务端 → 客户端 | 返回分配的clientID（数值型标识）                             |
+| **HallClients**        | 12   | 服务端 → 客户端 | 包含大厅用户字典（clientID-用户名映射）                      |
+| **RequestHallClients** | 13   | 客户端 → 服务端 | 手动请求刷新大厅列表                                         |
+| **MoveInfo**           | 18   | 客户端 ↔ 服务端 | 包含棋子位置(pos)和战局索引(onlineRoundIndex)                |
+| **ClientQuit**         | 99   | 客户端 → 服务端 | 显式断开连接指令                                             |
+| **HeartMessage**       | 100  | 客户端 → 服务端 | 维持TCP连接活性                                              |
+| **OnlineRoundResult**  | 9    | 客户端 → 服务端 | //TODO 战局结束后，双方客户端自动向服务端发送，包含战局ID(roundID)、落子信息(steps)、胜负结果(result) |
 
 ### 服务端协议处理
 
 #### 核心消息处理
 
+在 `ClientSocket->HandleMessage` 方法中实现，根据不同的 `MessageID` 来处理不同的消息类型。
+
 1. **战局管理**
    - **RoundInfo (6)**
      → 解析战局数据 → 调用`RoundManager.SaveRoundInfo()`持久化到txt文件
+
+   ```csharp
+   case (int)MessageID.RoundInfo:
+       Round round = new Round();
+       round.ReadFromBytes(buffer, sizeof(int)); // 跳过消息ID
+       Console.WriteLine("客户端{0}保存战局", this.clientID);
+       RoundManager.SaveRoundInfo(round); // 保存战局信息到txt
+       break;
+   ```
+
    - **RequestRoundList (7)**
      → 调用`RoundManager.GetRoundList()`读取文件 → 发送`ProvideRoundList`消息给客户端
+
+   ```csharp
+   case (int)MessageID.RequestRoundList:
+       Round[] rounds = RoundManager.GetRoundList(); // 收到客户端请求后从txt中读取战局信息
+       Console.WriteLine("客户端{0}请求战局信息", this.clientID);
+       this.Send(new ProvideRoundList(rounds)); // 把战局信息发送给客户端
+       break;
+   ```
+
+   - **OnlineRoundResult (9)**
+
+     //TODO
+
 2. **大厅管理**
+
    - **EnterHall (1)**
      → 记录用户名 → 分配clientID → 发送`AllowEnterHall` → 加入大厅字典
+
+   ```csharp
+   case (int)MessageID.EnterHall:
+       EnterHall enterHall = new EnterHall();
+       enterHall.ReadFromBytes(buffer, sizeof(int));
+       Console.WriteLine("客户端{0}进入大厅，用户名: {1}", this.clientID, enterHall.userName);
+       this.Send(new AllowEnterHall(this.clientID)); // 给客户端发送准许进入大厅的消息
+       ServerSocket.Instance.AddToHallClientDict(this.clientID, enterHall.userName); // 把进入大厅的客户端信息保存到大厅列表
+       break;
+   ```
+
    - **QuitHall (2)**
      → 从大厅字典移除 → 触发全厅广播更新
+
+   ```csharp
+   case (int)MessageID.RequestHallClients:
+       this.Send(new HallClients(ServerSocket.Instance.hallClientDict)); // 向客户端发送大厅用户数据
+       break;
+   ```
+
    - **RequestHallClients (13)**
      → 立即发送当前大厅用户字典给客户端
+
+   ```csharp
+   case (int)MessageID.QuitHall:
+       Console.WriteLine("客户端{0}退出大厅", this.clientID);
+       ServerSocket.Instance.RemoveFromHallClientDict(this.clientID);
+       break;
+   ```
+
 3. **对战流程**
    - **SendBattleRequest (3)**
      → 验证目标状态 → 转发请求 → 标记目标为`繁忙`
+
+   ```csharp
+   case (int)MessageID.SendBattleRequest:
+       SendBattleRequest sendBattleRequest = new SendBattleRequest();
+       sendBattleRequest.ReadFromBytes(buffer, sizeof(int));
+       Console.WriteLine("客户端{0}向客户端{1}发送对战请求", this.clientID, sendBattleRequest.riverClientID);
+       // 给被发送请求的客户端发送对战请求
+       ServerSocket.Instance.clientDict[sendBattleRequest.riverClientID].Send(
+           new SendBattleRequest(this.clientID, sendBattleRequest.senderClientName)); 
+       // 把被发送请求的客户端设置成繁忙
+       ServerSocket.Instance.SetHallClientIdle(sendBattleRequest.riverClientID, false);
+       break;
+   ```
+
    - **ReplyBattleRequest (4)**
      - 拒绝：重置双方为`空闲`
      - 接受：
        → 创建`OnlineRoundState`对象 → 分配全局`onlineRoundIndex`
        → 标记双方为`繁忙` → 发送`EnterRound`（先手标记不同） → 创建战局
+
+   ```csharp
+   case (int)MessageID.ReplyBattleRequest:
+       ReplyBattleRequest replyBattleRequest = new ReplyBattleRequest();
+       replyBattleRequest.ReadFromBytes(buffer, sizeof(int));
+       int riverClientID = replyBattleRequest.riverClientID;
+       bool accept = replyBattleRequest.accept;
+       Console.WriteLine("客户端{0}回复客户端{1}的对战请求，是否接受: {2}", this.clientID, riverClientID, accept);
+       if(!accept) {
+           // TODO 如果是false，把客户端{0}设置成空闲，给客户端{1}发送"你被拒绝了"
+           ServerSocket.Instance.SetHallClientIdle(this.clientID, true);
+       } else {
+           // 如果是true，把双方设置成繁忙
+           ServerSocket.Instance.SetHallClientIdle(this.clientID, false);
+           ServerSocket.Instance.SetHallClientIdle(riverClientID, false);
+   
+           // 通知双方进入对战
+           this.Send(new EnterRound(true, ONLINE_ROUND_INDEX)); // 被请求方是先手
+           ServerSocket.Instance.clientDict[riverClientID].Send(new EnterRound(false, ONLINE_ROUND_INDEX)); // 请求方是后手
+   
+           // 创建战局
+           ServerSocket.Instance.onlineRoundDict.Add(ONLINE_ROUND_INDEX, new OnlineRoundState(this.clientID, riverClientID));
+           ONLINE_ROUND_INDEX++;
+       }
+       break;
+   ```
+
    - **MoveInfo (18)**
      → 校验对战合法性 → 更新棋盘状态/战局信息 → 转发给对手客户端
-4. **连接管理**
+
+   ```csharp
+   case (int)MessageID.MoveInfo:
+       MoveInfo moveInfo = new MoveInfo();
+       moveInfo.ReadFromBytes(buffer, sizeof(int));
+       // 更新战局信息
+       ServerSocket.Instance.UpdateOnlineRoundState(moveInfo.onlineRoundIndex, moveInfo.pos, this.clientID);
+       // 从战局信息中获取对手的clientID
+       int riverID = ServerSocket.Instance.GetRiverClient(moveInfo.onlineRoundIndex, this.clientID);
+       // 给它的对手发送同样的落子信息
+       ServerSocket.Instance.clientDict[riverID].Send(moveInfo);
+       break;
+   ```
+
+1. **连接管理**
    - **ClientQuit (99)**
      → 清除数据（大厅&战局） → 关闭Socket
    - **HeartMessage (100)**
      → 更新`lastHeartbeatTime`时间戳
 
+   ```csharp
+   case (int)MessageID.ClientQuit:
+       Console.WriteLine("客户端{0}发来断开连接", this.clientID);
+       ServerSocket.Instance.RemoveClient(this.clientID);
+       this.Close();
+       break;
+   case (int)MessageID.HeartMessage:
+       lastHeartbeatTime = DateTime.UtcNow;
+       Console.WriteLine($"Heartbeat received. lastHeartbeatTime updated to: {lastHeartbeatTime}");
+       break;
+   ```
+
 #### 技术细节
 
 - **状态同步**
-  大厅用户变化时，自动向全体在线用户广播`HallClients`消息
+  大厅用户变化（新增、删除、闲忙状态改变）时，自动向全体在线用户广播`HallClients`消息
+  
+  ```csharp
+  public void AddToHallClientDict(int clientID, string name)
+  {
+      lock (_hallClientDictLock)
+      {
+          if (hallClientDict.ContainsKey(clientID) == false)
+          {
+              // 默认用户是空闲的
+              UserInfo userInfo = new UserInfo(name, true);
+              hallClientDict.Add(clientID, userInfo);
+          }
+      }
+  
+      // 通知所有客户端大厅用户数据变化
+      foreach (int clinetID in hallClientDict.Keys)
+      {
+          clientDict[clinetID].SendHallClients();
+      }
+  }
+  
+  public void RemoveFromHallClientDict(int clientID)
+  {
+      if (hallClientDict.ContainsKey(clientID))
+      {
+          hallClientDict.Remove(clientID);
+      }
+      // 通知所有客户端大厅用户数据变化
+      foreach (int clinetID in hallClientDict.Keys)
+      {
+          clientDict[clinetID].SendHallClients();
+      }
+  }
+  
+  public void SetHallClientIdle(int clientID, bool isIdle)
+  {
+      if (hallClientDict.ContainsKey(clientID))
+      {
+          // 获取当前用户信息
+          UserInfo userInfo = hallClientDict[clientID];
+          // 更新用户状态
+          userInfo.IsIdle = isIdle;
+          // 将更新后的用户信息重新存入字典
+          hallClientDict[clientID] = userInfo;
+      }
+  
+      // 通知所有客户端大厅用户数据变化
+      foreach (int clinetID in hallClientDict.Keys)
+      {
+          clientDict[clinetID].SendHallClients();
+      }
+  }
+  ```
+  
 - **心跳检测**
-  独立线程每0.1秒检查时间戳，60秒未更新则强制断开
+  在客户端连入后，立即开启心跳检测，用独立线程每0.1秒检查时间戳，60秒未更新则强制断开
+  
+  ```csharp
+  /// <summary>
+  /// 开启心跳消息检测的线程
+  /// </summary>
+  public void StartCheckTimeOut()
+  {
+      ThreadPool.QueueUserWorkItem(CheckHeartMessage);
+  }
+  
+  // 线程方法，每0.1s检测一次心跳消息超时
+  private void CheckHeartMessage(object obj)
+  {
+      while(isConnected)
+      {
+          CheckHeartMessageTimeOut();
+          Thread.Sleep(100);
+      }
+  }
+  private void CheckHeartMessageTimeOut()
+  {
+      if (lastHeartbeatTime == DateTime.MinValue || !isConnected)
+      {
+          return;
+      }
+      TimeSpan timeSpan = DateTime.UtcNow - lastHeartbeatTime;
+      if (timeSpan.TotalSeconds > TIME_OUT)
+      {
+          Console.WriteLine("客户端{0}心跳超时，即将断开连接", this.clientID);
+          ServerSocket.Instance.RemoveClient(this.clientID);
+          this.Close();
+      }
+  }
+  ```
+  
 - **战局索引**
   通过自增`ONLINE_ROUND_INDEX`确保全局唯一性 
 
@@ -119,13 +327,68 @@
 
 ### 异常处理设计
 
-// TODO
+#### 客户端断线重连
+
+//TODO
 
 ## 功能拆解
 
-### 战局信息
+### 连接管理
+
+连接管理模块负责处理客户端的连接和断开，确保服务器的稳定运行。具体功能包括：
+
+1. **客户端连接**：
+   - 当客户端连接到服务器时，服务器会为其分配一个唯一的 `clientID`，并将其加入客户端字典 `clientDict`。
+   - 服务器会开启心跳检测线程，定期检查客户端是否在线。
+2. **客户端断开**：
+   - 当客户端断开连接时，服务器会将其从客户端字典 `clientDict` 和大厅用户字典 `hallClientDict` 中移除。
+   - 服务器会通知所有在线玩家更新大厅用户列表。
+3. **心跳检测**：
+   - 服务器会定期检查客户端的心跳消息，如果客户端长时间未发送心跳消息，则判定其已断开连接。
+   - 服务器会清理断开连接的客户端，并释放相关资源。
 
 ### 联机大厅
 
+联机大厅是玩家点击【进入大厅】后的第一个界面，用于管理玩家的状态、匹配对手以及查看当前在线玩家列表。
+
+1. **玩家进入大厅**：
+   - 当玩家成功连接到服务器后，会发送 `EnterHall` 消息，服务器会记录玩家的用户名和客户端ID，并将其加入大厅用户字典 `hallClientDict`。
+   - 服务器会向该玩家发送 `AllowEnterHall` 消息，确认其成功进入大厅。
+   - 同时，服务器会通知所有在线玩家更新大厅用户列表。
+2. **玩家退出大厅**：
+   - 当玩家主动退出大厅时，会发送 `QuitHall` 消息，服务器会将其从大厅用户字典 `hallClientDict` 中移除。
+   - 服务器会通知所有在线玩家更新大厅用户列表。
+3. **大厅用户列表更新**：
+   - 当有玩家进入或退出大厅时，服务器会向所有在线玩家广播最新的 `HallClients` 消息，更新大厅用户列表。
+   - 玩家可以随时发送 `RequestHallClients` 消息，请求获取当前大厅用户列表。
+4. **玩家状态管理**：
+   - 玩家在大厅中的状态分为“空闲”和“繁忙”两种。空闲状态的玩家可以接收对战请求，繁忙状态的玩家则不能。
+   - 服务器通过 `SetHallClientIdle` 方法更新玩家的状态，并在状态变化时通知所有在线玩家。
+
 ### 联网对战
+
+联网对战是游戏的核心功能，玩家可以在大厅中发起对战请求，与其他玩家进行实时对战。
+
+1. **发起对战请求**：
+   - 玩家可以选择大厅中的其他空闲玩家，向其发送 `SendBattleRequest` 消息。
+   - 服务器会验证目标玩家的状态，如果目标玩家空闲，则转发对战请求，并将其状态设置为“繁忙”。
+2. **处理对战请求**：
+   - 目标玩家收到对战请求后，可以选择接受或拒绝。
+   - 如果目标玩家拒绝，服务器会将其状态重置为“空闲”，并通知发起玩家对战请求被拒绝。
+   - 如果目标玩家接受，服务器会创建一个新的战局，并将双方玩家的状态设置为“繁忙”。
+3. **进入对战**：
+   - 服务器会向双方玩家发送 `EnterRound` 消息，通知他们进入对战界面。
+   - 服务器会为对战分配一个唯一的 `onlineRoundIndex`，并初始化对战状态 `OnlineRoundState`，记录双方的玩家ID和棋盘状态。
+4. **对战过程**：
+   - 对战过程中，玩家每次落子会发送 `MoveInfo` 消息，服务器会更新对战状态，并将落子信息转发给对手。
+   - 服务器会检查对战状态，判断是否有玩家获胜或对战是否结束。
+5. **结束对战**：
+   - 当对战结束时，服务器会向双方玩家发送对战结果，并将他们的状态重置为“空闲”。
+   - 服务器会记录对战信息，并将其保存到战局历史中。
+
+### 战局信息
+
+使用`onlineRoundDict`字典管理在线战局状态，
+
+//TODO
 
