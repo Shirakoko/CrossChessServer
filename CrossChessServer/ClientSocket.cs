@@ -274,9 +274,12 @@ namespace CrossChessServer
 
                             // 保存 Round 到 txt 文件
                             RoundManager.SaveRoundInfo(existRound);
-                        }
-                        RoundManager.SaveRoundInfo(existRound);
+                            Console.WriteLine("战局ID {0} 校验通过并保存成功", roundIndex);
 
+                            // 从字典中删除该键值对
+                            ServerSocket.Instance.onlineRoundResultDict.Remove(roundIndex);
+                            Console.WriteLine("战局ID {0} 已从字典中移除", roundIndex);
+                        }
                     }
                     break;
                 case (int)MessageID.HeartMessage:

@@ -86,6 +86,8 @@
 
 //TODO
 
+使用`onlineRoundResultDict`字典管理客户端发送过来的联机对战结果，并进行校验。
+
 ## 协议处理
 
 ### 协议类型
@@ -106,7 +108,7 @@
 | **MoveInfo**           | 18   | 客户端 ↔ 服务端 | 包含棋子位置(pos)和战局索引(onlineRoundIndex)                |
 | **ClientQuit**         | 99   | 客户端 → 服务端 | 显式断开连接指令                                             |
 | **HeartMessage**       | 100  | 客户端 → 服务端 | 维持TCP连接活性                                              |
-| **OnlineRoundResult**  | 9    | 客户端 → 服务端 | //TODO 战局结束后，双方客户端自动向服务端发送，包含战局ID(roundID)、落子信息(steps)、胜负结果(result) |
+| **OnlineRoundResult**  | 9    | 客户端 → 服务端 | 战局结束后，双方客户端自动向服务端发送，包含战局ID(roundID)、落子信息(steps)、胜负结果(result) |
 
 ### 服务端协议处理
 
