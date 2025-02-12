@@ -82,11 +82,21 @@
 
 ### 战局信息
 
-使用`onlineRoundDict`字典管理在线战局状态，
-
-//TODO
-
-使用`onlineRoundResultDict`字典管理客户端发送过来的联机对战结果，并进行校验。
+1. **在线战局状态管理：**
+   - 使用`onlineRoundDict`字典管理在线战局状态。
+   - 收到客户端发来的表示落子信息的`MoveInfo`消息后：
+     - 用`GetRiverClientID`从中获取某个客户端的对手客户端ID，并给对手客户端发送落子信息。
+     - 用`UpdateOnlineRoundState`更新指定战局中某个格子的状态。
+2. **联机对战结果：**
+   - 使用`onlineRoundResultDict`字典管理客户端发送过来的联机对战结果。
+   - 接收到客户端发来的 `OnlineRoundResult` 消息后，解析对战结果数据。
+   - 根据 `roundID` 判断是否已经存在对应的战局信息：
+     - 如果不存在，创建新的 `Round` 对象并存入字典。
+     - 如果存在，进行校验（`result` 和 `steps`），校验通过后保存到文件并删除字典中的键值对。
+3. 序列化和反序列化：
+   - 使用 `RoundManager` 静态类对战局信息进行序列化和反序列化：
+     - 序列化：`SaveRoundInfo`将 `Round` 对象保存到文件中。
+     - 反序列化：`GetRoundList`从文件中读取所有战局信息并返回 `Round` 数组。
 
 ## 协议处理
 
@@ -142,8 +152,83 @@
 
    - **OnlineRoundResult (9)**
 
-     //TODO
+     → 解析对战结果 → 根据 `roundID` 是否在`onlineRoundResultDict`中决定新增或校验 → 校验通过后保存到文件。
 
+   ```csharp
+   case (int)MessageID.OnlineRoundResult:
+       OnlineRoundResult onlineRoundResult = new OnlineRoundResult();
+       onlineRoundResult.ReadFromBytes(buffer, sizeof(int));
+       // 战局ID
+       int roundIndex = onlineRoundResult.roundID;
+       bool isPrevPlayer = onlineRoundResult.isPrevPlayer;
+       string playerName = onlineRoundResult.playerName;
+       int result = onlineRoundResult.result;
+       int[] steps = onlineRoundResult.steps;
+       Console.WriteLine("收到客户端{0}发来的联机对战结果，roundID为{1}", clientID, roundIndex);
+       if(!ServerSocket.Instance.onlineRoundResultDict.ContainsKey(roundIndex))
+       {
+           Round newRound = new Round();
+           newRound.roundID = roundIndex;
+           if(isPrevPlayer) {
+               newRound.player1 = playerName;
+           } else
+           {
+               newRound.player2 = playerName;
+           }
+           newRound.result = result;
+   
+           // 深拷贝 steps 数组
+           newRound.steps = new int[steps.Length];
+           Array.Copy(steps, newRound.steps, steps.Length);
+   
+           // 第一个客户端发来的OnlineRoundResult存入字典
+           ServerSocket.Instance.onlineRoundResultDict.Add(roundIndex, newRound);
+       }
+       else
+       {
+           // 第二个客户端发来的OnlineRoundResult用于校验
+           // 从字典中取出第一个客户端发来的Round
+           Round existRound = ServerSocket.Instance.onlineRoundResultDict[roundIndex];
+           // 校验结果
+           bool pass = true;
+           // 校验 result，是否【一个为1一个为2】或【两个都为0】
+           if (!((existRound.result == 1 && result == 2) ||
+                 (existRound.result == 2 && result == 1) ||
+                 (existRound.result == 0 && result == 0))) {
+               pass = false;
+           }
+   
+           // 校验 steps，是否【完全相同】
+           if (!existRound.steps.SequenceEqual(steps)) {
+               pass = false;
+           }
+   
+           // 若校验通过
+           if (pass) {
+               // 补全剩下那个没有赋值过的 player（1或2）
+               if (string.IsNullOrEmpty(existRound.player1))
+               {
+                   existRound.player1 = playerName;
+               }
+               else if (string.IsNullOrEmpty(existRound.player2))
+               {
+                   existRound.player2 = playerName;
+               }
+   
+               // 保存 Round 到 txt 文件
+               RoundManager.SaveRoundInfo(existRound);
+               Console.WriteLine("战局ID {0} 校验通过并保存成功", roundIndex);
+   
+               // 从字典中删除该键值对
+               ServerSocket.Instance.onlineRoundResultDict.Remove(roundIndex);
+               Console.WriteLine("战局ID {0} 已从字典中移除", roundIndex);
+           }
+       }
+       break;
+   ```
+   
+   
+   
 2. **大厅管理**
 
    - **EnterHall (1)**
