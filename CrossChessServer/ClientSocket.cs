@@ -248,15 +248,15 @@ namespace CrossChessServer
                         Round existRound = ServerSocket.Instance.onlineRoundResultDict[roundIndex];
                         // 校验结果
                         bool pass = true;
-                        // 校验 result，是否【一个为1一个为2】或【两个都为0】
-                        if (!((existRound.result == 1 && result == 2) ||
-                              (existRound.result == 2 && result == 1) ||
-                              (existRound.result == 0 && result == 0))) {
+                        // 校验 result
+                        if (existRound.result != result) {
+                            Console.WriteLine("result校验失败,existRound {0}，result {1}", existRound.result, result);
                             pass = false;
                         }
 
                         // 校验 steps，是否【完全相同】
                         if (!existRound.steps.SequenceEqual(steps)) {
+                            Console.WriteLine("steps校验失败");
                             pass = false;
                         }
 
@@ -279,6 +279,9 @@ namespace CrossChessServer
                             // 从字典中删除该键值对
                             ServerSocket.Instance.onlineRoundResultDict.Remove(roundIndex);
                             Console.WriteLine("战局ID {0} 已从字典中移除", roundIndex);
+                        } else
+                        {
+                            Console.WriteLine("校验失败, 战局 {0} 没保存");
                         }
                     }
                     break;

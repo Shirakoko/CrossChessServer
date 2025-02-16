@@ -1,1 +1,5 @@
-RoundID: 1001, Player1: Ff, Player2: , Result: 1, Steps: 0,3,4,7,8,-1,-1,-1,-1
+
+RoundID: 1001, Player1: A, Player2: B, Result: 1, Steps: 4,0,6,3,2,-1,-1,-1,-1
+RoundID: 1002, Player1: Bbbbb, Player2: Aaaa, Result: 1, Steps: 1,4,2,6,0,-1,-1,-1,-1
+RoundID: 1003, Player1: Afga, Player2: Afaf, Result: 1, Steps: 3,1,4,0,5,-1,-1,-1,-1
+RoundID: 1003, Player1: Ff, Player2: Dd, Result: 1, Steps: 4,3,7,0,1,-1,-1,-1,-1
